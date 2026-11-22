@@ -1,6 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/staticwebapp.config.json",
-  "navigationFallback": "TODO(human)",
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/*.{js,css,ico,png,jpg,svg,webp,woff2,json,txt}"]
+  },
   "platform": {
     "apiRuntime": "dotnet-isolated:10.0"
   }

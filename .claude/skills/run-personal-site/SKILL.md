@@ -57,7 +57,15 @@ Plain `ng test` starts in watch mode and never exits. The API has no tests yet.
 ## Gotchas
 
 - **`swa start --api-location ../api` is unusable on Node 24.** SWA CLI 2.1.0 downloads its own Core Tools copy and then exits with `Found Azure Functions Core Tools v4 which is incompatible with your current Node.js v24`. That check is meant for Node-language functions and doesn't apply to this .NET API, but it still blocks the start. The fix is to run `func start` yourself and pass `--api-devserver-url http://localhost:7071`, which is what the driver does.
-- **The emulator still starts when `staticwebapp.config.json` is invalid. It runs without the file.** As of this writing, `navigationFallback` is the placeholder `"TODO(human)"` (it must be an object). The emulator prints a schema error and then "emulator started" anyway, so routes, fallback, and headers from the config are **not** applied. The driver prints a `WARNING` when this happens. Deep links such as `/about` still return 200 only because `ng serve` itself falls back to index.html. That proves nothing about SWA's `navigationFallback`.
+- **The emulator still starts when `staticwebapp.config.json` is invalid. It runs without the file.** If the file fails the schema (for example, `navigationFallback` given as a string instead of an object), the emulator prints the error and then "emulator started" anyway, so routes, fallback, and headers from the config are **not** applied. The driver prints a `WARNING` when this happens.
+- **`ng serve` hides fallback behavior.** The Angular dev server returns index.html for any unknown path, so deep links return 200 through the emulator even with no `navigationFallback`. To test the real fallback, serve the production build instead. Run this from `client/` with nothing on 4280, then probe with curl:
+  ```bash
+  npx ng build
+  swa start dist/ngdotcom/browser          # background it; logs "Found configuration file"
+  curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:4280/about          # 200 text/html = fallback
+  curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:4280/main-OLD.js     # 404 only if excluded
+  ```
+  Then run `driver.sh stop` (it kills whatever is on 4280).
 - **SWA CLI flag names.** `--run-timeout` and `--app-devserver-timeout` don't exist. The real flag is `-t/--devserver-timeout`. Check with `swa start --help` before trusting a flag.
 - **ng serve output is ANSI-colored.** `Local:` and `localhost:4200` are split by escape codes, so grepping for them fails. The driver sets `NO_COLOR=1` and waits for `generation complete` instead.
 - **"AzureWebJobsStorage Unhealthy" in func.log is harmless.** `local.settings.json` points at `UseDevelopmentStorage=true` and Azurite isn't running. HTTP triggers work anyway. Start Azurite only if you add a non-HTTP trigger.
